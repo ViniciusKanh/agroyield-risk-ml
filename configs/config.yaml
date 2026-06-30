@@ -1,0 +1,39 @@
+projeto:
+  nome: "CONICT Agro ML"
+  cultura: "Soja (em grão)"
+  estado_nome: "Paraná"
+  uf_codigo: "41"
+  ano_inicio: 2006
+  ano_fim: 2024
+
+sidra:
+  tabela_pam_lavouras_temporarias: "1612"
+  classificacao_produto_lavoura_temporaria: "81"
+  codigo_produto_soja: "2713"
+  # Variáveis serão baixadas como v/all e filtradas pelos nomes no tratamento.
+
+nasa_power:
+  community: "AG"
+  parametros:
+    - "PRECTOTCORR"
+    - "T2M"
+    - "T2M_MAX"
+    - "T2M_MIN"
+    - "RH2M"
+    - "WS2M"
+  sleep_segundos: 0.4
+  timeout_segundos: 60
+
+amostra:
+  # Para o MVP, evita baixar clima de todos os municípios. Use 80 ou 120.
+  limite_municipios_por_area_soja: 80
+  area_colhida_minima_media_ha: 1000
+
+alvo:
+  janela_media_movel: 3
+  limiar_quebra: 0.80
+
+modelagem:
+  ano_treino_ate: 2020
+  random_state: 42
+  usar_feature_set: "conservador"

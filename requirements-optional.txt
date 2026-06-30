@@ -1,0 +1,6 @@
+# Dependências opcionais para evoluir o projeto depois do MVP.
+# Instale apenas se quiser comparar com modelos adicionais.
+xgboost>=2.0.0
+shap>=0.44.0
+geopandas>=0.14.0
+geobr>=0.2.0
