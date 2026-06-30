@@ -1,0 +1,66 @@
+{
+  "melhor_modelo": "regressao_logistica",
+  "limiar_decisao": 0.5,
+  "metrica_principal_selecao": "f2",
+  "justificativa_metrica_principal": "O F2-score foi usado porque o problema é de triagem de risco agrícola, no qual a detecção de eventos reais de quebra possui maior prioridade do que a redução de falsos positivos.",
+  "features": [
+    "area_plantada_ha",
+    "produtividade_lag1",
+    "media_movel_3anos",
+    "chuva_total_mm",
+    "chuva_media_diaria_mm",
+    "temperatura_media_c",
+    "temperatura_maxima_media_c",
+    "temperatura_minima_media_c",
+    "umidade_media_pct",
+    "vento_medio_ms",
+    "dias_secos",
+    "dias_chuva_extrema",
+    "dias_calor_extremo"
+  ],
+  "ano_treino_ate": 2020,
+  "anos_validacao": 2,
+  "periodo_treino_interno": [
+    2009,
+    2018
+  ],
+  "periodo_validacao": [
+    2019,
+    2020
+  ],
+  "periodo_treino_completo": [
+    2009,
+    2020
+  ],
+  "periodo_teste": [
+    2021,
+    2024
+  ],
+  "tipo_features": "conservador",
+  "recall_minimo_selecao": 0.6,
+  "precision_minima_selecao": 0.2,
+  "limiares_avaliados": [
+    0.05,
+    0.1,
+    0.15,
+    0.2,
+    0.25,
+    0.3,
+    0.35,
+    0.4,
+    0.45,
+    0.5,
+    0.55,
+    0.6,
+    0.65,
+    0.7,
+    0.75,
+    0.8,
+    0.85,
+    0.9,
+    0.95
+  ],
+  "xgboost_disponivel": true,
+  "scale_pos_weight": 7.110497237569061,
+  "observacao_metodologica": "Modelo e limiar selecionados por F2-score em validação temporal interna. O teste final foi mantido separado para avaliação temporal fora da amostra."
+}

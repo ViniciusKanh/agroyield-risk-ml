@@ -1,0 +1,8 @@
+              precision    recall  f1-score   support
+
+  Sem quebra       0.88      0.50      0.64      1245
+      Quebra       0.24      0.69      0.36       284
+
+    accuracy                           0.53      1529
+   macro avg       0.56      0.59      0.50      1529
+weighted avg       0.76      0.53      0.58      1529

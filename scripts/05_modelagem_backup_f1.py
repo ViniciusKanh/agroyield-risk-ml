@@ -20,7 +20,6 @@ from sklearn.metrics import (
     classification_report,
     confusion_matrix,
     f1_score,
-    fbeta_score,
     precision_recall_curve,
     precision_score,
     recall_score,
@@ -66,8 +65,8 @@ FEATURES_EXPANDIDAS = FEATURES_CONSERVADORAS + [
     "area_colhida_ha",
 ]
 
+
 LIMIARES_PADRAO = [
-    0.05,
     0.10,
     0.15,
     0.20,
@@ -85,7 +84,6 @@ LIMIARES_PADRAO = [
     0.80,
     0.85,
     0.90,
-    0.95,
 ]
 
 
@@ -102,7 +100,11 @@ def obter_features(df: pd.DataFrame, tipo: str) -> list[str]:
 
 
 def calcular_scale_pos_weight(y: pd.Series) -> float:
-    """Calcula a razão entre classe negativa e positiva para o XGBoost."""
+    """
+    Calcula a razão entre classe negativa e positiva.
+
+    Essa razão é usada no XGBoost para lidar com desbalanceamento.
+    """
     qtd_negativos = int((y == 0).sum())
     qtd_positivos = int((y == 1).sum())
 
@@ -130,7 +132,11 @@ def calcular_pesos_amostrais_balanceados(y: pd.Series) -> np.ndarray:
 
 
 def criar_modelos(random_state: int, scale_pos_weight: float) -> dict[str, Pipeline]:
-    """Cria modelos comparáveis em pipelines do scikit-learn."""
+    """
+    Cria modelos comparáveis em pipelines do scikit-learn.
+
+    Os modelos foram configurados para classe desbalanceada e validação temporal.
+    """
     modelos: dict[str, Pipeline] = {
         "regressao_logistica": Pipeline(
             steps=[
@@ -276,7 +282,6 @@ def calcular_metricas_binarias(
         "precision": precision_score(y_true, y_pred, zero_division=0),
         "recall": recall_score(y_true, y_pred, zero_division=0),
         "f1": f1_score(y_true, y_pred, zero_division=0),
-        "f2": fbeta_score(y_true, y_pred, beta=2, zero_division=0),
         "roc_auc": roc_auc,
         "average_precision": average_precision,
         "tn": int(tn),
@@ -316,14 +321,11 @@ def escolher_limiar_validacao(
     """
     Escolhe o limiar com base apenas no conjunto de validação.
 
-    Critério principal:
-    - F2-score, pois o problema é de triagem de risco e o recall é mais importante.
-
-    Regras:
+    Critério:
     1. Preferir limiares com recall >= recall_minimo e precision >= precision_minima.
-    2. Entre eles, escolher maior F2.
+    2. Entre eles, escolher maior F1.
     3. Se nenhum atender aos dois critérios, relaxar precision e manter recall mínimo.
-    4. Se ainda não houver candidato, escolher maior F2 geral.
+    4. Se ainda não houver candidato, escolher maior F1 geral.
 
     Isso evita escolher limiar usando o conjunto de teste.
     """
@@ -336,19 +338,19 @@ def escolher_limiar_validacao(
     )
 
     candidatos = tabela[tabela["atende_criterio_completo"]].copy()
-    criterio = "maior_f2_com_recall_minimo_e_precision_minima"
+    criterio = "recall_minimo_e_precision_minima"
 
     if candidatos.empty:
         candidatos = tabela[tabela["atende_recall_minimo"]].copy()
-        criterio = "maior_f2_com_recall_minimo"
+        criterio = "recall_minimo"
 
     if candidatos.empty:
         candidatos = tabela.copy()
-        criterio = "maior_f2_geral"
+        criterio = "maior_f1_geral"
 
     candidatos = candidatos.sort_values(
-        ["f2", "recall", "balanced_accuracy", "precision", "f1"],
-        ascending=[False, False, False, False, False],
+        ["f1", "balanced_accuracy", "precision", "recall"],
+        ascending=[False, False, False, False],
     )
 
     return candidatos.iloc[0], criterio
@@ -588,25 +590,12 @@ def main() -> None:
     print("=" * 80)
     print("Modelagem temporal de risco de quebra de produtividade")
     print(f"Features usadas ({tipo_features}): {features}")
-    print(
-        f"Treino interno: {treino_interno['ano'].min()}–{treino_interno['ano'].max()} "
-        f"| linhas={len(treino_interno)}"
-    )
-    print(
-        f"Validação: {validacao['ano'].min()}–{validacao['ano'].max()} "
-        f"| linhas={len(validacao)}"
-    )
-    print(
-        f"Treino completo: {treino_completo['ano'].min()}–{treino_completo['ano'].max()} "
-        f"| linhas={len(treino_completo)}"
-    )
-    print(
-        f"Teste final: {teste['ano'].min()}–{teste['ano'].max()} "
-        f"| linhas={len(teste)}"
-    )
+    print(f"Treino interno: {treino_interno['ano'].min()}–{treino_interno['ano'].max()} | linhas={len(treino_interno)}")
+    print(f"Validação: {validacao['ano'].min()}–{validacao['ano'].max()} | linhas={len(validacao)}")
+    print(f"Treino completo: {treino_completo['ano'].min()}–{treino_completo['ano'].max()} | linhas={len(treino_completo)}")
+    print(f"Teste final: {teste['ano'].min()}–{teste['ano'].max()} | linhas={len(teste)}")
     print(f"Recall mínimo para seleção de limiar: {recall_minimo:.2f}")
     print(f"Precision mínima para seleção de limiar: {precision_minima:.2f}")
-    print("Métrica principal de seleção: F2-score")
     print(f"scale_pos_weight: {scale_pos_weight:.4f}")
     print("=" * 80)
 
@@ -676,16 +665,7 @@ def main() -> None:
         print("Métricas na validação com limiar escolhido:")
         print(
             melhor_limiar_validacao[
-                [
-                    "accuracy",
-                    "balanced_accuracy",
-                    "precision",
-                    "recall",
-                    "f1",
-                    "f2",
-                    "roc_auc",
-                    "average_precision",
-                ]
+                ["accuracy", "balanced_accuracy", "precision", "recall", "f1", "roc_auc"]
             ]
         )
 
@@ -729,7 +709,6 @@ def main() -> None:
                 "precision_validacao": float(melhor_limiar_validacao["precision"]),
                 "recall_validacao": float(melhor_limiar_validacao["recall"]),
                 "f1_validacao": float(melhor_limiar_validacao["f1"]),
-                "f2_validacao": float(melhor_limiar_validacao["f2"]),
                 "roc_auc_validacao": float(melhor_limiar_validacao["roc_auc"]),
                 "average_precision_validacao": float(
                     melhor_limiar_validacao["average_precision"]
@@ -810,14 +789,12 @@ def main() -> None:
 
     ranking_validacao = metricas_df.sort_values(
         [
-            "f2_validacao",
-            "recall_validacao",
-            "balanced_accuracy_validacao",
-            "precision_validacao",
             "f1_validacao",
-            "average_precision_validacao",
+            "balanced_accuracy_validacao",
+            "recall_validacao",
+            "precision_validacao",
         ],
-        ascending=[False, False, False, False, False, False],
+        ascending=[False, False, False, False],
     ).reset_index(drop=True)
 
     melhor_nome = str(ranking_validacao.iloc[0]["modelo"])
@@ -829,13 +806,12 @@ def main() -> None:
     metricas_df = metricas_df.sort_values(
         [
             "modelo_selecionado",
-            "f2",
-            "recall",
-            "balanced_accuracy",
-            "precision",
             "f1",
+            "balanced_accuracy",
+            "recall",
+            "precision",
         ],
-        ascending=[False, False, False, False, False, False],
+        ascending=[False, False, False, False, False],
     ).reset_index(drop=True)
 
     salvar_csv(
@@ -864,7 +840,6 @@ def main() -> None:
             "melhor_nome": melhor_nome,
             "limiar_decisao": melhor_limiar,
             "tipo_features": tipo_features,
-            "metrica_principal": "f2",
         },
         ROOT / "models" / "melhor_modelo.joblib",
     )
@@ -875,7 +850,6 @@ def main() -> None:
             "features": features,
             "limiares_escolhidos": limiares_escolhidos,
             "tipo_features": tipo_features,
-            "metrica_principal": "f2",
         },
         ROOT / "models" / "modelos_treinados.joblib",
     )
@@ -883,12 +857,6 @@ def main() -> None:
     metadados = {
         "melhor_modelo": melhor_nome,
         "limiar_decisao": melhor_limiar,
-        "metrica_principal_selecao": "f2",
-        "justificativa_metrica_principal": (
-            "O F2-score foi usado porque o problema é de triagem de risco agrícola, "
-            "no qual a detecção de eventos reais de quebra possui maior prioridade "
-            "do que a redução de falsos positivos."
-        ),
         "features": features,
         "ano_treino_ate": ano_treino_ate,
         "anos_validacao": anos_validacao,
@@ -915,7 +883,7 @@ def main() -> None:
         "xgboost_disponivel": XGBOOST_DISPONIVEL,
         "scale_pos_weight": scale_pos_weight,
         "observacao_metodologica": (
-            "Modelo e limiar selecionados por F2-score em validação temporal interna. "
+            "Modelo e limiar selecionados por validação temporal interna. "
             "O teste final foi mantido separado para avaliação temporal fora da amostra."
         ),
     }
@@ -938,7 +906,6 @@ def main() -> None:
                 "precision",
                 "recall",
                 "f1",
-                "f2",
                 "roc_auc",
                 "average_precision",
                 "tn",
@@ -949,7 +916,7 @@ def main() -> None:
         ]
     )
 
-    print("\nMelhor modelo selecionado por validação temporal com F2-score:")
+    print("\nMelhor modelo selecionado por validação temporal:")
     print(f"Modelo: {melhor_nome}")
     print(f"Limiar de decisão: {melhor_limiar:.2f}")
     print(f"Modelo salvo em: {ROOT / 'models' / 'melhor_modelo.joblib'}")
